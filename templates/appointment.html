@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Запис на прийом: {{ clinic }}{% endblock %}
+{% block content %}
+<section class="block narrow"><h1>Запис на прийом</h1>
+<p id="done" class="notice" role="status" hidden>Заявку прийнято. Ми зателефонуємо протягом години.</p>
+<form id="appt" method="post" novalidate>
+  <label>Ім'я
+    <input name="name" value="{{ form.get('name','') }}" required minlength="2" autocomplete="name">
+    <small class="err">{{ errors.get('name','') }}</small></label>
+  <label>Телефон
+    <input name="phone" type="tel" value="{{ form.get('phone','') }}" placeholder="+380501234567" required autocomplete="tel">
+    <small class="err">{{ errors.get('phone','') }}</small></label>
+  <label>Лікар
+    <select name="doctor_id" required>
+      <option value="">Оберіть лікаря</option>
+      {% for d in doctors %}<option value="{{ d.id }}" {{ 'selected' if form.get('doctor_id')|string == d.id|string }}>{{ d.name }}, {{ d.speciality }}</option>{% endfor %}
+    </select><small class="err">{{ errors.get('doctor_id','') }}</small></label>
+  <label>Дата візиту
+    <input name="visit_date" type="date" value="{{ form.get('visit_date','') }}" required>
+    <small class="err">{{ errors.get('visit_date','') }}</small></label>
+  <label>Коментар
+    <textarea name="comment" rows="3">{{ form.get('comment','') }}</textarea></label>
+  <button class="btn" type="submit">Надіслати заявку</button>
+</form></section>
+{% endblock %}

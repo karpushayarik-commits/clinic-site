@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Лікарі: {{ clinic }}{% endblock %}
+{% block content %}
+<section class="block"><h1>Лікарі клініки</h1>
+<div class="grid4">{% for d in doctors %}
+<article class="doc"><div class="ava" aria-hidden="true">{{ d.name[0] }}</div>
+<h3>{{ d.name }}</h3><p><b>{{ d.speciality }}</b>, стаж {{ d.experience }} р.</p><p>{{ d.bio }}</p></article>{% endfor %}</div>
+</section>
+{% endblock %}

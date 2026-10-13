@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Послуги: {{ clinic }}{% endblock %}
+{% block content %}
+<section class="block"><h1>Послуги та ціни</h1>
+<table class="tbl"><thead><tr><th>Послуга</th><th>Що входить</th><th>Ціна</th></tr></thead>
+<tbody>{% for s in services %}<tr><td>{{ s.name }}</td><td>{{ s.description }}</td><td>від {{ s.price }} грн</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

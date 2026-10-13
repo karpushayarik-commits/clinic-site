@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div>
+    <h1>Лікар, до якого можна записатися за дві хвилини</h1>
+    <p class="lead">Приватна клініка в центрі Дніпра. Прийом без черг, результати аналізів на наступний день.</p>
+    <a class="btn" href="{{ url_for('appointment') }}">Записатися на прийом</a>
+  </div>
+  <aside class="card slots" aria-label="Найближчі вільні вікна">
+    <h2>Сьогодні вільно</h2>
+    <ul>
+      {% for d in doctors %}<li><span>{{ d.speciality }}</span><b>{{ ['14:30','15:00','16:15','17:40'][loop.index0] }}</b></li>{% endfor %}
+    </ul>
+  </aside>
+</section>
+
+<section class="block" id="services">
+  <h2>Послуги та ціни</h2>
+  <div class="grid3">
+    {% for s in services %}
+    <article class="card"><h3>{{ s.name }}</h3><p>{{ s.description }}</p><p class="price">від {{ s.price }} грн</p></article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block tint">
+  <h2>Наші лікарі</h2>
+  <div class="grid4">
+    {% for d in doctors %}
+    <article class="doc"><div class="ava" aria-hidden="true">{{ d.name[0] }}</div>
+      <h3>{{ d.name }}</h3><p>{{ d.speciality }}, стаж {{ d.experience }} р.</p></article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="block">
+  <h2>Як проходить візит</h2>
+  <ol class="steps">
+    <li><b>Заявка.</b> Залишаєте ім'я, телефон і зручну дату.</li>
+    <li><b>Дзвінок.</b> Адміністратор уточнює час протягом години.</li>
+    <li><b>Прийом.</b> Лікар оглядає, призначає обстеження та лікування.</li>
+    <li><b>Результати.</b> Аналізи й висновок надходять у день візиту або наступного дня.</li>
+  </ol>
+</section>
+
+<section class="block tint">
+  <h2>Відгуки пацієнтів</h2>
+  <div class="grid3">
+    <blockquote class="card">Записалась ввечері, а вже вранці була у кардіолога. Усе пояснили зрозуміло.<footer>Наталія, 42 роки</footer></blockquote>
+    <blockquote class="card">Водив доньку до педіатра. Без черги, лікар знайшов підхід до дитини.<footer>Сергій, 35 років</footer></blockquote>
+    <blockquote class="card">Аналізи здала зранку, результати отримала наступного дня на пошту.<footer>Оксана, 29 років</footer></blockquote>
+  </div>
+</section>
+
+<section class="block cta">
+  <h2>Потрібна консультація?</h2>
+  <p>Телефонуйте <a href="tel:+380561234567">+38 056 123 45 67</a> або залиште заявку на сайті.</p>
+  <a class="btn" href="{{ url_for('appointment') }}">Записатися</a>
+</section>
+{% endblock %}

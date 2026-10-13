@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="block"><h1>Заявки пацієнтів</h1>
+{% if rows %}
+<table class="tbl"><thead><tr><th>№</th><th>Пацієнт</th><th>Телефон</th><th>Лікар</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
+<tbody>{% for r in rows %}<tr><td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.phone }}</td><td>{{ r.doctor }}</td><td>{{ r.visit_date }}</td><td>{{ r.status }}</td>
+<td class="acts">
+  <form method="post" action="{{ url_for('done', aid=r.id) }}"><button class="btn small ghost">Оброблено</button></form>
+  <form method="post" action="{{ url_for('delete', aid=r.id) }}"><button class="btn small ghost">Видалити</button></form>
+</td></tr>{% endfor %}</tbody></table>
+{% else %}<p>Заявок ще немає. Вони з'являться після відправки форми на сторінці запису.</p>{% endif %}
+</section>
+{% endblock %}
