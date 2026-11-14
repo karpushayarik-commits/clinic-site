@@ -20,11 +20,16 @@ SERVICES = [
     ("Лабораторія", "Загальні та біохімічні аналізи, результат за 1 день", 350),
 ]
 DOCTORS = [
-    ("Олена Коваленко", "Терапевт", 14, "Лікар вищої категорії. Веде пацієнтів з хронічними захворюваннями."),
-    ("Андрій Мельник", "Кардіолог", 18, "Кандидат медичних наук. Спеціалізується на гіпертонії."),
-    ("Ірина Шевченко", "Невролог", 11, "Працює з болем у спині та мігренями."),
-    ("Максим Бондаренко", "Педіатр", 9, "Приймає дітей від народження, проводить вакцинацію."),
+    ("Олена Коваленко", "Терапевт", 14, "Лікар вищої категорії. Веде пацієнтів з хронічними захворюваннями.",
+     "Дніпровський державний медичний університет, 2010", "Пн, Ср, Пт 8:00–14:00"),
+    ("Андрій Мельник", "Кардіолог", 18, "Кандидат медичних наук. Спеціалізується на гіпертонії.",
+     "Національний медичний університет ім. О. Богомольця, 2006", "Вт, Чт 10:00–18:00"),
+    ("Ірина Шевченко", "Невролог", 11, "Працює з болем у спині та мігренями.",
+     "Запорізький державний медичний університет, 2013", "Пн–Пт 14:00–20:00"),
+    ("Максим Бондаренко", "Педіатр", 9, "Приймає дітей від народження, проводить вакцинацію.",
+     "Дніпровський державний медичний університет, 2015", "Пн–Сб 9:00–15:00"),
 ]
+DOCTOR_FIELDS = ("name", "speciality", "experience", "bio", "education", "schedule")
 
 
 def db():
@@ -45,14 +50,21 @@ def init_db():
     c = sqlite3.connect(DB)
     c.executescript("""
     CREATE TABLE IF NOT EXISTS services(id INTEGER PRIMARY KEY, name TEXT, description TEXT, price INTEGER);
-    CREATE TABLE IF NOT EXISTS doctors(id INTEGER PRIMARY KEY, name TEXT, speciality TEXT, experience INTEGER, bio TEXT);
+    CREATE TABLE IF NOT EXISTS doctors(id INTEGER PRIMARY KEY, name TEXT, speciality TEXT, experience INTEGER,
+        bio TEXT, education TEXT DEFAULT '', schedule TEXT DEFAULT '');
     CREATE TABLE IF NOT EXISTS appointments(
         id INTEGER PRIMARY KEY, name TEXT, phone TEXT, doctor_id INTEGER, visit_date TEXT,
         comment TEXT, status TEXT DEFAULT 'нова', created TEXT DEFAULT CURRENT_TIMESTAMP);
     """)
+    cols = [r[1] for r in c.execute("PRAGMA table_info(doctors)")]
+    for col in ("education", "schedule"):  # оновлення старої бази
+        if col not in cols:
+            c.execute(f"ALTER TABLE doctors ADD COLUMN {col} TEXT DEFAULT ''")
     if not c.execute("SELECT COUNT(*) FROM services").fetchone()[0]:
         c.executemany("INSERT INTO services(name,description,price) VALUES (?,?,?)", SERVICES)
-        c.executemany("INSERT INTO doctors(name,speciality,experience,bio) VALUES (?,?,?,?)", DOCTORS)
+    if not c.execute("SELECT COUNT(*) FROM doctors").fetchone()[0]:
+        c.executemany("INSERT INTO doctors(name,speciality,experience,bio,education,schedule) VALUES (?,?,?,?,?,?)",
+                      DOCTORS)
     c.commit()
     c.close()
 
@@ -76,6 +88,17 @@ def validate(form):
     return errors
 
 
+def validate_doctor(form):
+    errors = {}
+    if len(form.get("name", "").strip()) < 3:
+        errors["name"] = "Введіть ПІБ лікаря"
+    if len(form.get("speciality", "").strip()) < 3:
+        errors["speciality"] = "Вкажіть спеціальність"
+    if not form.get("experience", "").strip().isdigit():
+        errors["experience"] = "Стаж: ціле число років"
+    return errors
+
+
 def login_required(f):
     @wraps(f)
     def wrapper(*a, **kw):
@@ -91,20 +114,18 @@ def index():
                            doctors=db().execute("SELECT * FROM doctors").fetchall())
 
 
-@app.route("/services/")
-def services():
-    return render_template("services.html", services=db().execute("SELECT * FROM services").fetchall())
-
-
-@app.route("/doctors/")
-def doctors():
-    return render_template("doctors.html", doctors=db().execute("SELECT * FROM doctors").fetchall())
+@app.route("/doctors/<int:did>/")
+def doctor(did):
+    d = db().execute("SELECT * FROM doctors WHERE id=?", (did,)).fetchone()
+    if not d:
+        abort(404)
+    return render_template("doctor.html", d=d)
 
 
 @app.route("/appointment/", methods=["GET", "POST"])
 def appointment():
     docs = db().execute("SELECT id, name, speciality FROM doctors").fetchall()
-    errors, form = {}, {}
+    errors, form = {}, {"doctor_id": request.args.get("doctor", "")}
     if request.method == "POST":
         form = request.form
         errors = validate(form)
@@ -139,7 +160,45 @@ def logout():
 def admin():
     rows = db().execute("""SELECT a.*, d.name AS doctor FROM appointments a
                            LEFT JOIN doctors d ON d.id = a.doctor_id ORDER BY a.id DESC""").fetchall()
-    return render_template("admin.html", rows=rows)
+    docs = db().execute("SELECT * FROM doctors ORDER BY id").fetchall()
+    return render_template("admin.html", rows=rows, doctors=docs)
+
+
+@app.route("/admin/doctor/new/", methods=["GET", "POST"], defaults={"did": None})
+@app.route("/admin/doctor/<int:did>/", methods=["GET", "POST"])
+@login_required
+def doctor_edit(did):
+    d = None
+    if did is not None:
+        d = db().execute("SELECT * FROM doctors WHERE id=?", (did,)).fetchone()
+        if not d:
+            abort(404)
+    form, errors = (dict(d) if d else {}), {}
+    if request.method == "POST":
+        form = request.form
+        errors = validate_doctor(form)
+        if not errors:
+            vals = [form.get(k, "").strip() for k in DOCTOR_FIELDS]
+            vals[2] = int(vals[2])
+            if d:
+                db().execute("UPDATE doctors SET " + ", ".join(f"{k}=?" for k in DOCTOR_FIELDS) + " WHERE id=?",
+                             (*vals, did))
+                flash("Дані лікаря оновлено")
+            else:
+                db().execute(f"INSERT INTO doctors({','.join(DOCTOR_FIELDS)}) VALUES (?,?,?,?,?,?)", vals)
+                flash("Лікаря додано")
+            db().commit()
+            return redirect(url_for("admin"))
+    return render_template("doctor_form.html", d=d, form=form, errors=errors)
+
+
+@app.route("/admin/doctor/<int:did>/delete", methods=["POST"])
+@login_required
+def doctor_delete(did):
+    db().execute("DELETE FROM doctors WHERE id=?", (did,))
+    db().commit()
+    flash("Лікаря видалено")
+    return redirect(url_for("admin"))
 
 
 @app.route("/admin/done/<int:aid>", methods=["POST"])

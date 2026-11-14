@@ -3,6 +3,9 @@
   var form = document.getElementById("appt");
   if (!form) return;
   var isStatic = document.body.dataset.static === "1";
+  // Перехід зі сторінки лікаря: /appointment/?doctor=ID — одразу обираємо лікаря
+  var pre = new URLSearchParams(location.search).get("doctor");
+  if (pre && !form.elements.doctor_id.value) form.elements.doctor_id.value = pre;
   form.addEventListener("submit", function (e) {
     if (!isStatic) return; // на Flask валідує сервер
     e.preventDefault();

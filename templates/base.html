@@ -12,9 +12,9 @@
 <header class="top">
   <a class="logo" href="{{ url_for('index') }}">{{ clinic }}</a>
   <nav>
-    <a href="{{ url_for('services') }}">Послуги</a>
-    <a href="{{ url_for('doctors') }}">Лікарі</a>
-    {% if session.get('admin') %}<a href="{{ url_for('admin') }}">Заявки</a><a href="{{ url_for('logout') }}">Вийти</a>
+    <a href="{{ url_for('index') }}#services">Послуги</a>
+    <a href="{{ url_for('index') }}#doctors">Лікарі</a>
+    {% if session.get('admin') %}<a href="{{ url_for('admin') }}">Адмінка</a><a href="{{ url_for('logout') }}">Вийти</a>
     {% elif not static_build %}<a href="{{ url_for('login') }}">Вхід</a>{% endif %}
     <a class="btn small" href="{{ url_for('appointment') }}">Записатися</a>
   </nav>

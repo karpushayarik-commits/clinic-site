@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ d.name }}: {{ clinic }}{% endblock %}
+{% block content %}
+<section class="block">
+  <a class="back" href="{{ url_for('index') }}#doctors">← Усі лікарі</a>
+  <div class="profile">
+    <div class="ava big" aria-hidden="true">{{ d.name[0] }}</div>
+    <div>
+      <h1>{{ d.name }}</h1>
+      <p class="lead">{{ d.speciality }}, стаж {{ d.experience }} р.</p>
+      <p>{{ d.bio }}</p>
+      <dl class="facts">
+        {% if d.education %}<dt>Освіта</dt><dd>{{ d.education }}</dd>{% endif %}
+        {% if d.schedule %}<dt>Графік прийому</dt><dd>{{ d.schedule }}</dd>{% endif %}
+      </dl>
+      <a class="btn" href="{{ url_for('appointment', doctor=d.id) }}">Записатися до лікаря</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

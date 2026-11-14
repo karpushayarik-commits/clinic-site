@@ -20,9 +20,15 @@ nav{display:flex;gap:20px;align-items:center;flex-wrap:wrap}nav a{text-decoratio
 .block{padding:clamp(36px,6vw,80px) clamp(16px,5vw,80px)}
 .tint{background:var(--mint)}.narrow{max-width:640px;margin:auto}
 .grid3,.grid4{display:grid;gap:20px}
-.grid3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.grid4{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.grid3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.grid4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 .price{color:var(--teal);font-weight:600;margin:0}
-.doc{background:#fff;border-radius:var(--r);padding:20px}
+.doc{background:#fff;border-radius:var(--r);padding:20px;color:var(--ink);text-decoration:none;display:block;transition:border-color .15s,transform .15s}
+a.doc:hover{border-color:var(--teal);transform:translateY(-2px)}.more{color:var(--teal);font-weight:500}
+.back{display:inline-block;margin-bottom:24px;text-decoration:none}
+.profile{display:grid;grid-template-columns:auto 1fr;gap:40px;align-items:start;max-width:900px}
+.ava.big{width:160px;height:160px;font-size:64px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:8px 24px;margin:24px 0}.facts dt{color:var(--muted)}.facts dd{margin:0}
+.head-row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}.mt{margin-top:56px}
 .ava{width:64px;height:64px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font:500 26px Unbounded,sans-serif;margin-bottom:12px}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;padding:0;counter-reset:s;list-style:none}
 .steps li{counter-increment:s;border-top:3px solid var(--amber);padding-top:14px}
@@ -38,4 +44,4 @@ input,select,textarea{display:block;width:100%;margin-top:6px;padding:12px;font:
 .acts{display:flex;gap:8px}.acts form{margin:0}
 .foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;padding:32px clamp(16px,5vw,80px);background:var(--ink);color:#d7e6e2}
 .foot a{color:#fff}.muted{color:#9bb3ae}
-@media(max-width:800px){.hero{grid-template-columns:1fr}}
+@media(max-width:800px){.hero,.profile{grid-template-columns:1fr}}
