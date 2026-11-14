@@ -3,18 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Приватна клініка «{{ clinic }}» у Дніпрі: послуги, лікарі, онлайн-запис на прийом.">
 <title>{% block title %}Клініка «{{ clinic }}»{% endblock %}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&family=Unbounded:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body data-static="{{ 1 if static_build else 0 }}">
 <header class="top">
   <a class="logo" href="{{ url_for('index') }}">{{ clinic }}</a>
-  <nav>
+  <button class="burger" type="button" aria-label="Меню" aria-expanded="false" aria-controls="menu"><span></span></button>
+  <nav id="menu" aria-label="Головне меню">
     <a href="{{ url_for('index') }}#services">Послуги</a>
     <a href="{{ url_for('index') }}#doctors">Лікарі</a>
-    {% if session.get('admin') %}<a href="{{ url_for('admin') }}">Адмінка</a><a href="{{ url_for('logout') }}">Вийти</a>
+    {% if session.get('user') %}<a href="{{ url_for('admin') }}">Адмінка</a><a href="{{ url_for('logout') }}">Вийти</a>
     {% elif not static_build %}<a href="{{ url_for('login') }}">Вхід</a>{% endif %}
     <a class="btn small" href="{{ url_for('appointment') }}">Записатися</a>
   </nav>
@@ -26,8 +29,20 @@
 <footer class="foot">
   <div><strong>Клініка «{{ clinic }}»</strong><br>м. Дніпро, вул. Європейська, 12</div>
   <div>Пн–Сб 8:00–20:00<br><a href="tel:+380561234567">+38 056 123 45 67</a></div>
-  <div class="muted">Навчальний проєкт. Ліцензія та ціни умовні.</div>
+  <div><a href="https://github.com/karpushayarik-commits/clinic-site">Код на GitHub</a><br>
+    <span class="muted">© {{ year }} Навчальний проєкт. Ціни умовні.</span></div>
 </footer>
+
+<div class="modal" id="confirm" hidden>
+  <div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <h2 id="confirm-title">Підтвердіть видалення</h2>
+    <p id="confirm-text">Запис буде видалено назавжди.</p>
+    <div class="modal-acts">
+      <button class="btn ghost" type="button" data-close>Скасувати</button>
+      <button class="btn danger" type="button" id="confirm-ok">Видалити</button>
+    </div>
+  </div>
+</div>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

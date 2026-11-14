@@ -6,7 +6,7 @@
     <p class="lead">Приватна клініка в центрі Дніпра. Прийом без черг, результати аналізів на наступний день.</p>
     <a class="btn" href="{{ url_for('appointment') }}">Записатися на прийом</a>
   </div>
-  <aside class="card slots" aria-label="Найближчі вільні вікна">
+  <aside class="card glass slots" aria-label="Найближчі вільні вікна">
     <h2>Сьогодні вільно</h2>
     <ul>
       {% for d in doctors[:4] %}<li><span>{{ d.speciality }}</span><b>{{ ['14:30','15:00','16:15','17:40'][loop.index0] }}</b></li>{% endfor %}
@@ -18,16 +18,22 @@
   <h2>Послуги та ціни</h2>
   <div class="grid3">
     {% for s in services %}
-    <article class="card"><h3>{{ s.name }}</h3><p>{{ s.description }}</p><p class="price">від {{ s.price }} грн</p></article>
+    <article class="card reveal"><h3>{{ s.name }}</h3><p>{{ s.description }}</p><p class="price">від {{ s.price }} грн</p></article>
     {% endfor %}
   </div>
 </section>
 
 <section class="block" id="doctors">
-  <h2>Наші лікарі</h2>
+  <div class="head-row">
+    <h2>Наші лікарі</h2>
+    <div class="filters" role="group" aria-label="Фільтр за спеціальністю">
+      <button class="chip active" type="button" data-filter="all">Усі</button>
+      {% for s in doctors|map(attribute='speciality')|unique %}<button class="chip" type="button" data-filter="{{ s }}">{{ s }}</button>{% endfor %}
+    </div>
+  </div>
   <div class="grid4">
     {% for d in doctors %}
-    <a class="doc card" href="{{ url_for('doctor', did=d.id) }}"><div class="ava" aria-hidden="true">{{ d.name[0] }}</div>
+    <a class="doc card reveal" href="{{ url_for('doctor', did=d.id) }}" data-spec="{{ d.speciality }}"><span class="ava" aria-hidden="true">{{ d.name[0] }}</span>
       <h3>{{ d.name }}</h3><p>{{ d.speciality }}, стаж {{ d.experience }} р.</p><span class="more">Детальніше →</span></a>
     {% endfor %}
   </div>

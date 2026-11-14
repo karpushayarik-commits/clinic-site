@@ -2,13 +2,13 @@ import os, re, sqlite3
 from datetime import date
 from functools import wraps
 from flask import Flask, g, render_template, request, redirect, url_for, session, flash, abort
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 DB = os.path.join(app.root_path, "clinic.db")
+SCHEMA = os.path.join(app.root_path, "schema.sql")
 STATIC_BUILD = os.environ.get("STATIC_BUILD") == "1"
-ADMIN_USER = "admin"
-ADMIN_PASS = os.environ.get("ADMIN_PASS", "admin123")
 CLINIC = "Верес"
 
 SERVICES = [
@@ -29,13 +29,21 @@ DOCTORS = [
     ("Максим Бондаренко", "Педіатр", 9, "Приймає дітей від народження, проводить вакцинацію.",
      "Дніпровський державний медичний університет, 2015", "Пн–Сб 9:00–15:00"),
 ]
-DOCTOR_FIELDS = ("name", "speciality", "experience", "bio", "education", "schedule")
+DOCTOR_FIELDS = ("name", "service_id", "experience", "bio", "education", "schedule")
+DOCTORS_SQL = """SELECT d.*, s.name AS speciality FROM doctors d
+                 JOIN services s ON s.id = d.service_id"""
+
+
+def connect():
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 
 def db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB)
-        g.db.row_factory = sqlite3.Row
+        g.db = connect()
     return g.db
 
 
@@ -47,40 +55,36 @@ def close_db(_):
 
 
 def init_db():
-    c = sqlite3.connect(DB)
-    c.executescript("""
-    CREATE TABLE IF NOT EXISTS services(id INTEGER PRIMARY KEY, name TEXT, description TEXT, price INTEGER);
-    CREATE TABLE IF NOT EXISTS doctors(id INTEGER PRIMARY KEY, name TEXT, speciality TEXT, experience INTEGER,
-        bio TEXT, education TEXT DEFAULT '', schedule TEXT DEFAULT '');
-    CREATE TABLE IF NOT EXISTS appointments(
-        id INTEGER PRIMARY KEY, name TEXT, phone TEXT, doctor_id INTEGER, visit_date TEXT,
-        comment TEXT, status TEXT DEFAULT 'нова', created TEXT DEFAULT CURRENT_TIMESTAMP);
-    """)
-    cols = [r[1] for r in c.execute("PRAGMA table_info(doctors)")]
-    for col in ("education", "schedule"):  # оновлення старої бази
-        if col not in cols:
-            c.execute(f"ALTER TABLE doctors ADD COLUMN {col} TEXT DEFAULT ''")
+    c = connect()
+    with open(SCHEMA, encoding="utf-8") as f:
+        c.executescript(f.read())
     if not c.execute("SELECT COUNT(*) FROM services").fetchone()[0]:
-        c.executemany("INSERT INTO services(name,description,price) VALUES (?,?,?)", SERVICES)
+        c.executemany("INSERT INTO services(name, description, price) VALUES (?, ?, ?)", SERVICES)
     if not c.execute("SELECT COUNT(*) FROM doctors").fetchone()[0]:
-        c.executemany("INSERT INTO doctors(name,speciality,experience,bio,education,schedule) VALUES (?,?,?,?,?,?)",
-                      DOCTORS)
+        for name, spec, exp, bio, edu, sched in DOCTORS:
+            sid = c.execute("SELECT id FROM services WHERE name = ?", (spec,)).fetchone()[0]
+            c.execute("""INSERT INTO doctors(name, service_id, experience, bio, education, schedule)
+                         VALUES (?, ?, ?, ?, ?, ?)""", (name, sid, exp, bio, edu, sched))
+    if not c.execute("SELECT COUNT(*) FROM users").fetchone()[0]:
+        c.execute("INSERT INTO users(username, password_hash) VALUES (?, ?)",
+                  ("admin", generate_password_hash(os.environ.get("ADMIN_PASS", "veres2026"))))
     c.commit()
     c.close()
 
 
 @app.context_processor
 def inject():
-    return dict(clinic=CLINIC, static_build=STATIC_BUILD)
+    return dict(clinic=CLINIC, static_build=STATIC_BUILD, year=date.today().year)
 
 
-def validate(form):
+def validate_appointment(form):
     errors = {}
     if len(form.get("name", "").strip()) < 2:
         errors["name"] = "Введіть ім'я (мінімум 2 літери)"
     if not re.fullmatch(r"\+?[0-9 ()\-]{10,16}", form.get("phone", "").strip()):
         errors["phone"] = "Введіть телефон, наприклад +380501234567"
-    if not form.get("doctor_id", "").isdigit():
+    did = form.get("doctor_id", "")
+    if not did.isdigit() or not db().execute("SELECT 1 FROM doctors WHERE id = ?", (did,)).fetchone():
         errors["doctor_id"] = "Оберіть лікаря"
     d = form.get("visit_date", "")
     if not d or d < date.today().isoformat():
@@ -92,8 +96,9 @@ def validate_doctor(form):
     errors = {}
     if len(form.get("name", "").strip()) < 3:
         errors["name"] = "Введіть ПІБ лікаря"
-    if len(form.get("speciality", "").strip()) < 3:
-        errors["speciality"] = "Вкажіть спеціальність"
+    sid = form.get("service_id", "")
+    if not sid.isdigit() or not db().execute("SELECT 1 FROM services WHERE id = ?", (sid,)).fetchone():
+        errors["service_id"] = "Оберіть спеціальність"
     if not form.get("experience", "").strip().isdigit():
         errors["experience"] = "Стаж: ціле число років"
     return errors
@@ -102,7 +107,7 @@ def validate_doctor(form):
 def login_required(f):
     @wraps(f)
     def wrapper(*a, **kw):
-        if not session.get("admin"):
+        if not session.get("user"):
             return redirect(url_for("login"))
         return f(*a, **kw)
     return wrapper
@@ -110,13 +115,14 @@ def login_required(f):
 
 @app.route("/")
 def index():
-    return render_template("index.html", services=db().execute("SELECT * FROM services").fetchall(),
-                           doctors=db().execute("SELECT * FROM doctors").fetchall())
+    return render_template("index.html",
+                           services=db().execute("SELECT * FROM services ORDER BY id").fetchall(),
+                           doctors=db().execute(DOCTORS_SQL + " ORDER BY d.id").fetchall())
 
 
 @app.route("/doctors/<int:did>/")
 def doctor(did):
-    d = db().execute("SELECT * FROM doctors WHERE id=?", (did,)).fetchone()
+    d = db().execute(DOCTORS_SQL + " WHERE d.id = ?", (did,)).fetchone()
     if not d:
         abort(404)
     return render_template("doctor.html", d=d)
@@ -124,13 +130,14 @@ def doctor(did):
 
 @app.route("/appointment/", methods=["GET", "POST"])
 def appointment():
-    docs = db().execute("SELECT id, name, speciality FROM doctors").fetchall()
+    docs = db().execute(DOCTORS_SQL + " ORDER BY d.name").fetchall()
     errors, form = {}, {"doctor_id": request.args.get("doctor", "")}
     if request.method == "POST":
         form = request.form
-        errors = validate(form)
+        errors = validate_appointment(form)
         if not errors:
-            db().execute("INSERT INTO appointments(name,phone,doctor_id,visit_date,comment) VALUES (?,?,?,?,?)",
+            db().execute("""INSERT INTO appointments(name, phone, doctor_id, visit_date, comment)
+                            VALUES (?, ?, ?, ?, ?)""",
                          (form["name"].strip(), form["phone"].strip(), int(form["doctor_id"]),
                           form["visit_date"], form.get("comment", "").strip()))
             db().commit()
@@ -142,8 +149,11 @@ def appointment():
 @app.route("/login/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form.get("user") == ADMIN_USER and request.form.get("password") == ADMIN_PASS:
-            session["admin"] = True
+        user = db().execute("SELECT * FROM users WHERE username = ?",
+                            (request.form.get("user", "").strip(),)).fetchone()
+        if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
+            session.clear()
+            session["user"] = user["username"]
             return redirect(url_for("admin"))
         flash("Невірний логін або пароль")
     return render_template("login.html")
@@ -160,7 +170,7 @@ def logout():
 def admin():
     rows = db().execute("""SELECT a.*, d.name AS doctor FROM appointments a
                            LEFT JOIN doctors d ON d.id = a.doctor_id ORDER BY a.id DESC""").fetchall()
-    docs = db().execute("SELECT * FROM doctors ORDER BY id").fetchall()
+    docs = db().execute(DOCTORS_SQL + " ORDER BY d.id").fetchall()
     return render_template("admin.html", rows=rows, doctors=docs)
 
 
@@ -170,7 +180,7 @@ def admin():
 def doctor_edit(did):
     d = None
     if did is not None:
-        d = db().execute("SELECT * FROM doctors WHERE id=?", (did,)).fetchone()
+        d = db().execute("SELECT * FROM doctors WHERE id = ?", (did,)).fetchone()
         if not d:
             abort(404)
     form, errors = (dict(d) if d else {}), {}
@@ -179,23 +189,25 @@ def doctor_edit(did):
         errors = validate_doctor(form)
         if not errors:
             vals = [form.get(k, "").strip() for k in DOCTOR_FIELDS]
-            vals[2] = int(vals[2])
+            vals[1], vals[2] = int(vals[1]), int(vals[2])
             if d:
-                db().execute("UPDATE doctors SET " + ", ".join(f"{k}=?" for k in DOCTOR_FIELDS) + " WHERE id=?",
-                             (*vals, did))
+                db().execute("""UPDATE doctors SET name = ?, service_id = ?, experience = ?, bio = ?,
+                                education = ?, schedule = ? WHERE id = ?""", (*vals, did))
                 flash("Дані лікаря оновлено")
             else:
-                db().execute(f"INSERT INTO doctors({','.join(DOCTOR_FIELDS)}) VALUES (?,?,?,?,?,?)", vals)
+                db().execute("""INSERT INTO doctors(name, service_id, experience, bio, education, schedule)
+                                VALUES (?, ?, ?, ?, ?, ?)""", vals)
                 flash("Лікаря додано")
             db().commit()
             return redirect(url_for("admin"))
-    return render_template("doctor_form.html", d=d, form=form, errors=errors)
+    services = db().execute("SELECT id, name FROM services ORDER BY name").fetchall()
+    return render_template("doctor_form.html", d=d, form=form, errors=errors, services=services)
 
 
 @app.route("/admin/doctor/<int:did>/delete", methods=["POST"])
 @login_required
 def doctor_delete(did):
-    db().execute("DELETE FROM doctors WHERE id=?", (did,))
+    db().execute("DELETE FROM doctors WHERE id = ?", (did,))
     db().commit()
     flash("Лікаря видалено")
     return redirect(url_for("admin"))
@@ -204,7 +216,7 @@ def doctor_delete(did):
 @app.route("/admin/done/<int:aid>", methods=["POST"])
 @login_required
 def done(aid):
-    db().execute("UPDATE appointments SET status='оброблена' WHERE id=?", (aid,))
+    db().execute("UPDATE appointments SET status = 'оброблена' WHERE id = ?", (aid,))
     db().commit()
     return redirect(url_for("admin"))
 
@@ -212,9 +224,20 @@ def done(aid):
 @app.route("/admin/delete/<int:aid>", methods=["POST"])
 @login_required
 def delete(aid):
-    db().execute("DELETE FROM appointments WHERE id=?", (aid,))
+    db().execute("DELETE FROM appointments WHERE id = ?", (aid,))
     db().commit()
+    flash("Заявку видалено")
     return redirect(url_for("admin"))
+
+
+@app.errorhandler(404)
+def not_found(_):
+    return render_template("error.html", code=404, text="Такої сторінки немає."), 404
+
+
+@app.errorhandler(500)
+def server_error(_):
+    return render_template("error.html", code=500, text="Щось пішло не так. Спробуйте пізніше."), 500
 
 
 init_db()

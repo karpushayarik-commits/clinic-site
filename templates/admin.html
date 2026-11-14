@@ -3,21 +3,22 @@
 {% block content %}
 <section class="block">
 <div class="head-row"><h1>Лікарі</h1><a class="btn small" href="{{ url_for('doctor_edit') }}">+ Додати лікаря</a></div>
-<table class="tbl"><thead><tr><th>№</th><th>ПІБ</th><th>Спеціальність</th><th>Стаж</th><th>Графік</th><th></th></tr></thead>
+<div class="tbl-wrap"><table class="tbl"><thead><tr><th>№</th><th>ПІБ</th><th>Спеціальність</th><th>Стаж</th><th>Графік</th><th>Дії</th></tr></thead>
 <tbody>{% for d in doctors %}<tr><td>{{ d.id }}</td><td>{{ d.name }}</td><td>{{ d.speciality }}</td><td>{{ d.experience }} р.</td><td>{{ d.schedule }}</td>
 <td class="acts">
+  <a class="btn small ghost" href="{{ url_for('doctor', did=d.id) }}">Переглянути</a>
   <a class="btn small ghost" href="{{ url_for('doctor_edit', did=d.id) }}">Редагувати</a>
-  <form method="post" action="{{ url_for('doctor_delete', did=d.id) }}" onsubmit="return confirm('Видалити лікаря?')"><button class="btn small ghost">Видалити</button></form>
-</td></tr>{% endfor %}</tbody></table>
+  <form method="post" action="{{ url_for('doctor_delete', did=d.id) }}" data-confirm="Видалити лікаря {{ d.name }}? Його заявки залишаться без лікаря."><button class="btn small ghost">Видалити</button></form>
+</td></tr>{% endfor %}</tbody></table></div>
 
 <h2 class="mt">Заявки пацієнтів</h2>
 {% if rows %}
-<table class="tbl"><thead><tr><th>№</th><th>Пацієнт</th><th>Телефон</th><th>Лікар</th><th>Дата</th><th>Статус</th><th></th></tr></thead>
+<div class="tbl-wrap"><table class="tbl"><thead><tr><th>№</th><th>Пацієнт</th><th>Телефон</th><th>Лікар</th><th>Дата</th><th>Статус</th><th>Дії</th></tr></thead>
 <tbody>{% for r in rows %}<tr><td>{{ r.id }}</td><td>{{ r.name }}</td><td>{{ r.phone }}</td><td>{{ r.doctor or '—' }}</td><td>{{ r.visit_date }}</td><td>{{ r.status }}</td>
 <td class="acts">
   <form method="post" action="{{ url_for('done', aid=r.id) }}"><button class="btn small ghost">Оброблено</button></form>
-  <form method="post" action="{{ url_for('delete', aid=r.id) }}"><button class="btn small ghost">Видалити</button></form>
-</td></tr>{% endfor %}</tbody></table>
+  <form method="post" action="{{ url_for('delete', aid=r.id) }}" data-confirm="Видалити заявку №{{ r.id }} ({{ r.name }})?"><button class="btn small ghost">Видалити</button></form>
+</td></tr>{% endfor %}</tbody></table></div>
 {% else %}<p>Заявок ще немає. Вони з'являться після відправки форми на сторінці запису.</p>{% endif %}
 </section>
 {% endblock %}

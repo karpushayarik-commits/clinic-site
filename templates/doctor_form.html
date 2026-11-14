@@ -3,16 +3,21 @@
 {% block content %}
 <section class="block narrow"><h1>{{ 'Редагування: ' ~ d.name if d else 'Новий лікар' }}</h1>
 <form method="post" novalidate>
-  <label>ПІБ<input name="name" value="{{ form.get('name','') }}" required>
+  <label>ПІБ<input name="name" value="{{ form.get('name','') }}" required minlength="3">
     <small class="err">{{ errors.get('name','') }}</small></label>
-  <label>Спеціальність<input name="speciality" value="{{ form.get('speciality','') }}" required>
-    <small class="err">{{ errors.get('speciality','') }}</small></label>
+  <label>Спеціальність
+    <select name="service_id" required>
+      <option value="">Оберіть спеціальність</option>
+      {% for s in services %}<option value="{{ s.id }}" {{ 'selected' if form.get('service_id')|string == s.id|string }}>{{ s.name }}</option>{% endfor %}
+    </select><small class="err">{{ errors.get('service_id','') }}</small></label>
   <label>Стаж, років<input name="experience" type="number" min="0" value="{{ form.get('experience','') }}" required>
     <small class="err">{{ errors.get('experience','') }}</small></label>
   <label>Про лікаря<textarea name="bio" rows="3">{{ form.get('bio','') }}</textarea></label>
   <label>Освіта<input name="education" value="{{ form.get('education','') }}"></label>
   <label>Графік прийому<input name="schedule" value="{{ form.get('schedule','') }}" placeholder="Пн–Пт 9:00–17:00"></label>
-  <button class="btn" type="submit">Зберегти</button>
-  <a class="btn ghost" href="{{ url_for('admin') }}">Скасувати</a>
+  <div class="form-acts">
+    <button class="btn" type="submit">Зберегти</button>
+    <a class="btn ghost" href="{{ url_for('admin') }}">Скасувати</a>
+  </div>
 </form></section>
 {% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Помилка {{ code }}: {{ clinic }}{% endblock %}
+{% block content %}
+<section class="block narrow error-page">
+  <p class="code">{{ code }}</p>
+  <h1>{{ text }}</h1>
+  <a class="btn" href="{{ url_for('index') }}">На головну</a>
+</section>
+{% endblock %}
